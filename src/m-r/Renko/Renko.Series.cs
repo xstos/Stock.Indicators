@@ -9,6 +9,24 @@ public static partial class Indicator
         EndType endType)
         where TQuote : IQuote
     {
+        return CalcRenko(quotesList, brickSize, endType, out var ro);
+    }
+
+    public static RenkoIncremental<TQuote> CalcRenkoIncremental<TQuote>(
+        this List<TQuote> quotesList,
+        decimal brickSize,
+        EndType endType = EndType.Close)
+        where TQuote : IQuote
+    {
+        quotesList ??= [];
+        CalcRenko(quotesList, brickSize, endType, out var ro);
+        return ro;
+    }
+
+    internal static List<RenkoResult> CalcRenko<TQuote>(List<TQuote> quotesList, decimal brickSize, EndType endType, out RenkoIncremental<TQuote> ro) where TQuote : IQuote
+    {
+        ro = new RenkoIncremental<TQuote>();
+
         // check parameter arguments
         ValidateRenko(brickSize);
 
@@ -38,12 +56,21 @@ public static partial class Indicator
             Open = baseline,
             Close = baseline
         };
+        ro.PushQuote = PushQuote;
+        ro.Bricks = results;
 
         // roll through quotes
         for (int i = 1; i < length; i++)
         {
             TQuote q = quotesList[i];
 
+            PushQuote(q);
+        }
+
+        return results;
+
+        int PushQuote(TQuote q)
+        {
             // accumulate brick info
             if (resetHLV)
             {
@@ -95,9 +122,8 @@ public static partial class Indicator
 
             // init next brick(s)
             resetHLV = absQty != 0;
+            return absQty;
         }
-
-        return results;
     }
 
     // calculate brick size
